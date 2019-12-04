@@ -66,29 +66,28 @@ volatile uint8_t direction = DIR_STOP;
 #define BLUE_LED_PIN            A5
 
 
-// Kathrein Fernbedienung
+// JVC Fernbedienung
 #define IR_MASK                0x07FF
-#define IR_KEY_RIGHT           0x07B1
-#define IR_KEY_UP              0x07B0
-#define IR_KEY_LEFT            0x07B3
-#define IR_KEY_DOWN            0x07B2
-#define IR_KEY_OK              0x07B4
-#define IR_KEY_ON_OFF          0x0799
-#define IR_KEY_START           0x07BB // 0x0798 // 
-#define IR_KEY_STOP            0x07BF // 0x0797 // 
-#define IR_KEY_PAUSE           0x07BD
-#define IR_KEY_PPLUS           0x07A2
-#define IR_KEY_PMINUS          0x07A3
-#define IR_KEY_BLUE            0x07AC
+#define IR_KEY_RIGHT           0x0540
+#define IR_KEY_UP              0x0500
+#define IR_KEY_LEFT            0x05C0
+#define IR_KEY_DOWN            0x0580
 
-// Fuer 
+#define IR_KEY_OK              0x0589 // = set
+#define IR_KEY_ON_OFF          0x05E8
+#define IR_KEY_START           0x05A0 
+#define IR_KEY_STOP            0x05C2
+#define IR_KEY_PAUSE           0x05BC
+#define IR_KEY_PPLUS           0x0578
+#define IR_KEY_PMINUS          0x05F8
+#define IR_KEY_BLUE            0x057C
 
 #define NUM_PINGS            5
 
 NewPing sonar(HC_SR04_TRIGGER_PIN, HC_SR04_ECHO_PIN, MAX_DISTANCE); // NewPing setup of pins and maximum distance.
-volatile unsigned int distance = 0;     // distance sensors [cm]
+volatile unsigned int distance = 0xffff;     // distance sensors [cm]
 
-// Infrared receiver
+// Infrared receiver>
 #if ENABLE_IRREMOTE==1
   IRrecv irrecv(IR_RECV_PIN);
   decode_results results;
@@ -131,7 +130,11 @@ unsigned int getDistance()
 
 void updateDistance()
 {
+#if ENABLE_PING == 1
   distance = getDistance();
+#else
+  distance = 0xffff;
+#endif  
 }
 
 void updateServo()
@@ -194,7 +197,7 @@ void updateDirection(uint16_t key)
     break;
   
   case IR_KEY_START:
-    mode = MODE_AUTONOMOUS;
+    // mode = MODE_AUTONOMOUS;
     break;
     
   case IR_KEY_PAUSE:
@@ -226,9 +229,10 @@ void updateDirection(uint16_t key)
     }
     break;
     
-    
+  case IR_MASK:
   default:
-       direction = DIR_STOP;   
+       cmd = true;
+       break;
   }
   if (cmd)
   {
@@ -244,7 +248,7 @@ void setup()
   // setup infrared
   irrecv.blink13(0);
   irrecv.enableIRIn();
-  
+
   // setup motor driver
   motorL.setSpeed(200);
   motorL.run(RELEASE);
@@ -267,6 +271,8 @@ void updateIrRemote()
     results.value &= IR_MASK;
     updateDirection(results.value);
     Serial.print("IR : ");
+    Serial.print(results.decode_type, DEC);
+    Serial.print("/");
     Serial.println(results.value, HEX);
     Serial.print("MODE : ");
     Serial.println(direction, DEC);
@@ -346,7 +352,7 @@ void loop()
   cycleTimer = millis();
   
   updateIrRemote();
-  // updateDistance();
+  updateDistance();
 
   if (mode == MODE_AUTONOMOUS)
   {
@@ -417,6 +423,7 @@ void loop()
     drive(direction);
   }
   static unsigned long lastSerialInfo = 0;
+  /*
   if (millis() - lastSerialInfo >= 2000)
   {
     Serial.print("DIST : ");
@@ -426,5 +433,5 @@ void loop()
     Serial.println(angle, DEC);
     lastSerialInfo = millis();
   }
+  */
 }
-
